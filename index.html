@@ -3,6 +3,7 @@
 <head>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-R1ZCLH6XCR"></script>
+<script src="/sdk.js"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -10,14 +11,13 @@
 
   gtag('config', 'G-R1ZCLH6XCR');
 </script>
-<script src="/sdk.js"></script>
     <meta charset="UTF-8" />
 	<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-	<title>Закрой поросенка</title>
+	<title>Close the exit for the piglet</title>
 	
 	<!-- Standardised web app manifest -->
-	<!-- <link rel="manifest" href="appmanifest.json" /> -->
+	<link rel="manifest" href="appmanifest.json" />
 
 	<!-- Allow fullscreen mode on iOS devices. (These are Apple specific meta tags.) -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui" />
@@ -40,26 +40,11 @@
 			overflow: hidden;
 			touch-action: none;
 			-ms-touch-action: none;
-
-			user-select: none; /* Запрещает выделение текста */
-			-webkit-user-select: none;
-			-moz-user-select: none;
-			-ms-user-select: none;
-
-			pointer-events: none;
 		}
 		canvas {
 			touch-action-delay: none;
 			touch-action: none;
 			-ms-touch-action: none;
-
-
-			user-select: none; /* Запрещает выделение текста */
-			-webkit-user-select: none;
-			-moz-user-select: none;
-			-ms-user-select: none;
-
-			pointer-events: none;
 		}
     </style>
 	
@@ -103,7 +88,7 @@
 	<!-- Construct 2 exported games require jQuery. -->
 	<script src="jquery-3.4.1.min.js"></script>
 
-	<!-- <script src="patch/js/poki-sdk.js"></script> -->
+	<script src="patch/js/poki-sdk.js"></script>
 
 	
     <!-- The runtime script.  You can rename it, but don't forget to rename the reference here as well.
@@ -162,44 +147,31 @@
     </script>
   <script src="js/analytics_ubg_v1_4.js"></script>
   <script src="js/ubg235_client_v1_1.js"></script>
-  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+	<script>
+		const startGameReadyApi = () => {
 
-<script>
-	document.addEventListener('contextmenu', function(event) {
-		event.preventDefault(); 
-	});
-</script>
+			// Проверка на наличие YaGames
+			if (typeof YaGames === 'undefined') {
+				console.log('YaGames не определен');
+				return;
+			}
 
-			<!-- vk bridge -->
-			<script>
-				vkBridge.send("VKWebAppInit", {});
-			</script>
-			<script>
-				vkBridge.send('VKWebAppShowBannerAd', {
-					banner_location: 'bottom'
-				})
-						.then((data) => {
-							if (data.result) {
-								// Баннерная реклама отобразилась
-							}
-						})
-						.catch((error) => {
-							// Ошибка
-							console.log(error);
-						});
-			</script>
+			YaGames.init().then(ysdk => {
+				console.log('Пользователь играет, SDK подключено');
+				window.ysdk = ysdk;
+				if (ysdk.features.LoadingAPI) {
+					ysdk.features.LoadingAPI?.ready();
+					ysdk.features.GameplayAPI.start()
+					console.log('LoadingAPI ready');
+				} else {
+					console.log('LoadingAPI не поддерживается.');
+				}
+			}).catch(error => {
+				console.error('Ошибка при инициализации SDK:', error);
+			});
+		};
 
-<script>
-	const observer = new MutationObserver(() => {
-		const watermark = document.getElementById('watermark');
-		if (watermark) {
-			watermark.remove();
-			console.log('Watermark removed');
-		}
-	});
-
-	observer.observe(document.body, { childList: true, subtree: true });
-</script>
-</script>
+		startGameReadyApi()
+	</script>
 </body> 
 </html> 

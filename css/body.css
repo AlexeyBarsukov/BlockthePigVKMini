@@ -2,13 +2,6 @@
     background: linear-gradient(298deg, #668F0A 30%, #FFA213 30%, #c9e6b7 70%, #668F0A 70%);
     position: relative;
     overflow: hidden;
-
-    user-select: none; /* Запрещает выделение текста */
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-
-    pointer-events: none;
 }
 
 .body-styles::before {
