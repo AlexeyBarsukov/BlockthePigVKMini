@@ -4717,7 +4717,7 @@ quat4.str=function(a){return"["+a[0]+", "+a[1]+", "+a[2]+", "+a[3]+"]"};
 					ctx.clearRect(0, 0, overlay_width, overlay_height);
 					var mx = overlay_width / 2;
 					var my = overlay_height / 2;
-					var haslogo = (this.loaderstyle === 0 && this.loaderlogos.logo.complete);
+					var haslogo = (this.loaderstyle === 0 && this.loaderlogos.logo.complete && this.loaderlogos.logo.naturalWidth > 0);
 					var hlw = 40 * dpr;
 					var hlh = 0;
 					var logowidth = 80 * dpr;

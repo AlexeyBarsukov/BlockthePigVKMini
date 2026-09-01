@@ -133,85 +133,76 @@
 			}
 		};
     </script>
-<!-- vk bridge -->
 <script>
-	vkBridge.send("VKWebAppInit", {});
-</script>
-<script>
-	vkBridge.send('VKWebAppShowBannerAd', {
-		banner_location: 'bottom'
-	})
-	.then(function(data) {
-		if (data.result) {
-			console.log('Banner shown');
+(function() {
+	var lastAdTime = 0;
+	var AD_COOLDOWN = 30000;
+
+	function showInterstitial(callback) {
+		if (!window.vkBridge) { callback(); return; }
+		var now = Date.now();
+		if (now - lastAdTime < AD_COOLDOWN) { callback(); return; }
+		lastAdTime = now;
+		console.log('[VK Ads] Showing interstitial...');
+		vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+			.then(function() { console.log('[VK Ads] Interstitial shown'); callback(); })
+			.catch(function(e) { console.log('[VK Ads] Interstitial error:', e); callback(); });
+	}
+	window._vkShowInterstitial = showInterstitial;
+
+	var SysActs = cr.system_object.prototype.acts;
+
+	var origGoToLayout = SysActs.GoToLayout;
+	SysActs.GoToLayout = function(to) {
+		var self = this;
+		var layoutName = to && to.name ? to.name : '';
+		var currentName = self.runtime.running_layout ? self.runtime.running_layout.name : '';
+		if ((layoutName === 'MenuLayout' || layoutName === 'FieldLayout') &&
+			currentName !== 'LoaderLayout' && currentName !== 'MenuLayout') {
+			console.log('[VK Ads] GoToLayout:', currentName, '->', layoutName);
+			showInterstitial(function() { origGoToLayout.call(self, to); });
+		} else {
+			origGoToLayout.call(self, to);
 		}
-	})
-	.catch(function(error) {
-		console.log('Banner error:', error);
-	});
+	};
 
-	(function() {
-		var lastAdTime = 0;
-		var AD_COOLDOWN = 30000;
-
-		function showInterstitial(callback) {
-			var now = Date.now();
-			if (now - lastAdTime < AD_COOLDOWN) {
-				callback();
-				return;
-			}
-			lastAdTime = now;
-			vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-				.then(function() { callback(); })
-				.catch(function() { callback(); });
+	var origGoToLayoutByName = SysActs.GoToLayoutByName;
+	SysActs.GoToLayoutByName = function(layoutname) {
+		var self = this;
+		var target = (layoutname || '').toLowerCase();
+		var currentName = self.runtime.running_layout ? self.runtime.running_layout.name : '';
+		if ((target === 'menulayout' || target === 'fieldlayout') &&
+			currentName !== 'LoaderLayout' && currentName !== 'MenuLayout') {
+			console.log('[VK Ads] GoToLayoutByName:', currentName, '->', layoutname);
+			showInterstitial(function() { origGoToLayoutByName.call(self, layoutname); });
+		} else {
+			origGoToLayoutByName.call(self, layoutname);
 		}
+	};
 
-		var SysActs = cr.system_object.prototype.acts;
+	var origRestartLayout = SysActs.RestartLayout;
+	SysActs.RestartLayout = function(layoutname) {
+		var self = this;
+		console.log('[VK Ads] RestartLayout');
+		showInterstitial(function() { origRestartLayout.call(self, layoutname); });
+	};
 
-		var origGoToLayout = SysActs.GoToLayout;
-		SysActs.GoToLayout = function(to) {
-			var self = this;
-			var layoutName = to && to.name ? to.name : '';
-			if (layoutName === 'MenuLayout' || layoutName === 'FieldLayout') {
-				var currentName = self.runtime.running_layout ? self.runtime.running_layout.name : '';
-				if (currentName === 'LoaderLayout' || currentName === 'MenuLayout') {
-					origGoToLayout.call(self, to);
-					return;
-				}
-				showInterstitial(function() {
-					origGoToLayout.call(self, to);
-				});
-			} else {
-				origGoToLayout.call(self, to);
-			}
-		};
-
-		var origGoToLayoutByName = SysActs.GoToLayoutByName;
-		SysActs.GoToLayoutByName = function(layoutname) {
-			var self = this;
-			var target = (layoutname || '').toLowerCase();
-			if (target === 'menulayout' || target === 'fieldlayout') {
-				var currentName = self.runtime.running_layout ? self.runtime.running_layout.name : '';
-				if (currentName === 'LoaderLayout' || currentName === 'MenuLayout') {
-					origGoToLayoutByName.call(self, layoutname);
-					return;
-				}
-				showInterstitial(function() {
-					origGoToLayoutByName.call(self, layoutname);
-				});
-			} else {
-				origGoToLayoutByName.call(self, layoutname);
-			}
-		};
-
-		var origRestartLayout = SysActs.RestartLayout;
-		SysActs.RestartLayout = function(layoutname) {
-			var self = this;
-			showInterstitial(function() {
-				origRestartLayout.call(self, layoutname);
+	if (window.vkBridge) {
+		vkBridge.send('VKWebAppInit')
+			.then(function() {
+				console.log('[VK] Init OK');
+				return vkBridge.send('VKWebAppShowBannerAd', { banner_location: 'bottom' });
+			})
+			.then(function() {
+				console.log('[VK Ads] Banner shown');
+			})
+			.catch(function(e) {
+				console.log('[VK] Init or banner error:', e);
 			});
-		};
-	})();
+	} else {
+		console.log('[VK] vkBridge not loaded');
+	}
+})();
 </script>
 </body> 
 </html> 
