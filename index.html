@@ -1,20 +1,11 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-R1ZCLH6XCR"></script>
-<script src="/sdk.js"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-R1ZCLH6XCR');
-</script>
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <meta charset="UTF-8" />
 	<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-	<title>Close the exit for the piglet</title>
+	<title>Закрой поросенка</title>
 	
 	<!-- Standardised web app manifest -->
 	<link rel="manifest" href="appmanifest.json" />
@@ -88,9 +79,6 @@
 	<!-- Construct 2 exported games require jQuery. -->
 	<script src="jquery-3.4.1.min.js"></script>
 
-	<script src="patch/js/poki-sdk.js"></script>
-
-	
     <!-- The runtime script.  You can rename it, but don't forget to rename the reference here as well.
     This file will have been minified and obfuscated if you enabled "Minify script" during export. -->
 	<script src="c2runtime.js"></script>
@@ -145,33 +133,85 @@
 			}
 		};
     </script>
-  <script src="js/analytics_ubg_v1_4.js"></script>
-  <script src="js/ubg235_client_v1_1.js"></script>
-	<script>
-		const startGameReadyApi = () => {
+<!-- vk bridge -->
+<script>
+	vkBridge.send("VKWebAppInit", {});
+</script>
+<script>
+	vkBridge.send('VKWebAppShowBannerAd', {
+		banner_location: 'bottom'
+	})
+	.then(function(data) {
+		if (data.result) {
+			console.log('Banner shown');
+		}
+	})
+	.catch(function(error) {
+		console.log('Banner error:', error);
+	});
 
-			// Проверка на наличие YaGames
-			if (typeof YaGames === 'undefined') {
-				console.log('YaGames не определен');
+	(function() {
+		var lastAdTime = 0;
+		var AD_COOLDOWN = 30000;
+
+		function showInterstitial(callback) {
+			var now = Date.now();
+			if (now - lastAdTime < AD_COOLDOWN) {
+				callback();
 				return;
 			}
+			lastAdTime = now;
+			vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+				.then(function() { callback(); })
+				.catch(function() { callback(); });
+		}
 
-			YaGames.init().then(ysdk => {
-				console.log('Пользователь играет, SDK подключено');
-				window.ysdk = ysdk;
-				if (ysdk.features.LoadingAPI) {
-					ysdk.features.LoadingAPI?.ready();
-					ysdk.features.GameplayAPI.start()
-					console.log('LoadingAPI ready');
-				} else {
-					console.log('LoadingAPI не поддерживается.');
+		var SysActs = cr.system_object.prototype.acts;
+
+		var origGoToLayout = SysActs.GoToLayout;
+		SysActs.GoToLayout = function(to) {
+			var self = this;
+			var layoutName = to && to.name ? to.name : '';
+			if (layoutName === 'MenuLayout' || layoutName === 'FieldLayout') {
+				var currentName = self.runtime.running_layout ? self.runtime.running_layout.name : '';
+				if (currentName === 'LoaderLayout' || currentName === 'MenuLayout') {
+					origGoToLayout.call(self, to);
+					return;
 				}
-			}).catch(error => {
-				console.error('Ошибка при инициализации SDK:', error);
-			});
+				showInterstitial(function() {
+					origGoToLayout.call(self, to);
+				});
+			} else {
+				origGoToLayout.call(self, to);
+			}
 		};
 
-		startGameReadyApi()
-	</script>
+		var origGoToLayoutByName = SysActs.GoToLayoutByName;
+		SysActs.GoToLayoutByName = function(layoutname) {
+			var self = this;
+			var target = (layoutname || '').toLowerCase();
+			if (target === 'menulayout' || target === 'fieldlayout') {
+				var currentName = self.runtime.running_layout ? self.runtime.running_layout.name : '';
+				if (currentName === 'LoaderLayout' || currentName === 'MenuLayout') {
+					origGoToLayoutByName.call(self, layoutname);
+					return;
+				}
+				showInterstitial(function() {
+					origGoToLayoutByName.call(self, layoutname);
+				});
+			} else {
+				origGoToLayoutByName.call(self, layoutname);
+			}
+		};
+
+		var origRestartLayout = SysActs.RestartLayout;
+		SysActs.RestartLayout = function(layoutname) {
+			var self = this;
+			showInterstitial(function() {
+				origRestartLayout.call(self, layoutname);
+			});
+		};
+	})();
+</script>
 </body> 
 </html> 
